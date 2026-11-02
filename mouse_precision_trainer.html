@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鼠标精准度训练器</title>
+<style>
+:root{--bg:#0b1020;--panel:#141c31;--panel2:#1a2540;--text:#eef3ff;--muted:#9aa9c8;--accent:#65e4c2;--accent2:#8ba8ff;--danger:#ff7185}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 20% 0%,#1c2a4c 0,#0b1020 48%);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+main{max-width:1180px;margin:auto;padding:24px 18px 40px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+h1{font-size:clamp(25px,4vw,38px);margin:0 0 6px;letter-spacing:.2px}
+.sub{color:var(--muted);max-width:740px}
+.pill{border:1px solid #304363;border-radius:999px;padding:7px 12px;color:#b7c8e9;white-space:nowrap;font-size:12px}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px}
+.panel{background:linear-gradient(180deg,#17213a,#11192c);border:1px solid #2b3856;border-radius:18px;padding:17px;box-shadow:0 12px 30px #0002}
+h2{font-size:17px;margin:0 0 14px}
+label{display:block;color:#b6c4df;font-size:13px;margin:12px 0 6px}
+select,input[type=number],input[type=color]{width:100%;border:1px solid #344563;background:#0d1528;color:var(--text);border-radius:10px;padding:10px;font:inherit}
+input[type=color]{height:42px;padding:4px}
+button{border:0;border-radius:11px;padding:11px 14px;font:600 14px inherit;cursor:pointer;transition:transform .12s,opacity .12s}
+button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--accent);color:#07221d}.secondary{background:#263554;color:#eaf0ff;border:1px solid #3b4b6b}.danger{background:#482434;color:#ffdce2;border:1px solid #7c4054}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.hint{color:var(--muted);font-size:12px;margin-top:12px}
+.stage-panel{padding:12px}
+.stage-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 5px 12px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:#0d1528;border:1px solid #263654;border-radius:10px;padding:7px 10px;min-width:80px}
+.stat small{display:block;color:var(--muted);font-size:11px}.stat strong{font-size:17px;font-variant-numeric:tabular-nums}
+#arena{position:relative;width:100%;height:min(61vh,570px);min-height:330px;border:1px solid #2c3d60;border-radius:13px;overflow:hidden;background-color:#0b1325;background-image:linear-gradient(#26365333 1px,transparent 1px),linear-gradient(90deg,#26365333 1px,transparent 1px);background-size:32px 32px;cursor:none;touch-action:none}
+#arena:focus{outline:2px solid #65e4c277;outline-offset:2px}
+#game{width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:22px;background:#081020b8;backdrop-filter:blur(3px);cursor:default}
+.overlay.hidden{display:none}
+.overlay-card{max-width:420px}
+.overlay h2{font-size:25px;margin-bottom:8px}.overlay p{color:#b8c7e4}
+.results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+.result{background:#0c1427;border:1px solid #263653;border-radius:12px;padding:12px}
+.result small{display:block;color:var(--muted);font-size:12px}.result strong{font-size:22px;font-variant-numeric:tabular-nums}
+.report{margin-top:14px;color:#c8d5ed;background:#0c1427;border:1px solid #263653;padding:13px;border-radius:12px;min-height:48px}
+.section{margin-top:16px}.section p{margin:7px 0;color:var(--muted);font-size:13px}
+.history{width:100%;border-collapse:collapse;font-size:13px}.history th,.history td{padding:9px 7px;border-bottom:1px solid #283653;text-align:left}.history th{color:#9eafd0;font-weight:500}
+footer{color:#7182a4;font-size:12px;margin-top:18px}
+@media(max-width:820px){.layout{grid-template-columns:1fr}.results{grid-template-columns:repeat(2,minmax(0,1fr))}header{display:block}.pill{display:inline-block;margin-top:12px}#arena{height:55vh;min-height:300px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div><h1>鼠标精准度训练器</h1><div class="sub">独立网页版 · 碰到目标自动触发 · 自定义准星 · 实时倒计时 · 训练报告</div></div>
+<div class="pill">本地运行 · 无需安装</div>
+</header>
+<div class="layout">
+<aside class="panel">
+<h2>训练设置</h2>
+<label for="mode">测试项目</label>
+<select id="mode">
+<option value="flick">反应点靶：移动碰到目标即得分</option>
+<option value="tracking">追踪稳定：准星保持在移动目标内</option>
+<option value="precision">精细控制：小目标连续命中</option>
+</select>
+<label for="duration">测试时长（秒）</label>
+<select id="duration"><option>30</option><option selected>45</option><option>60</option><option>90</option></select>
+<label for="size">目标大小</label>
+<select id="size"><option value="small">小</option><option value="medium" selected>中</option><option value="large">大</option></select>
+<label for="crossColor">准星颜色</label><input id="crossColor" type="color" value="#65e4c2">
+<label for="crossSize">准星大小（像素）</label><input id="crossSize" type="number" min="6" max="36" value="18">
+<label for="crossGap">准星中心间隙（像素）</label><input id="crossGap" type="number" min="0" max="12" value="4">
+<div class="actions"><button class="primary" id="startBtn">开始测试</button><button class="secondary" id="resetBtn">重置</button></div>
+<div class="hint">提示：将鼠标移动到目标上即可触发，无需点击。测试时请把鼠标放在训练区域内。按 Esc 可结束当前测试。</div>
+<div class="section"><h2>测试说明</h2><p><b>反应点靶</b>：目标随机出现，命中后自动生成下一个。</p><p><b>追踪稳定</b>：目标持续移动，统计准星停留在目标范围内的时间。</p><p><b>精细控制</b>：小目标连续出现，观察命中率和平均反应时间。</p></div>
+</aside>
+<section class="panel stage-panel">
+<div class="stage-head"><div><h2 style="margin-bottom:3px">训练区域</h2><div class="hint" style="margin:0">将鼠标移入区域后，准星会跟随移动。</div></div>
+<div class="stats"><div class="stat"><small>剩余时间</small><strong id="time">45.0</strong></div><div class="stat"><small>命中</small><strong id="hits">0</strong></div><div class="stat"><small>命中率</small><strong id="accuracy">—</strong></div></div></div>
+<div id="arena" tabindex="0" aria-label="鼠标训练区域">
+<canvas id="game"></canvas>
+<div class="overlay" id="overlay"><div class="overlay-card"><h2 id="overlayTitle">准备好了吗？</h2><p id="overlayText">选择测试项目后点击“开始测试”。移动鼠标碰到目标即可命中，不需要点击。</p><button class="primary" id="overlayBtn">开始训练</button></div></div>
+</div>
+<div class="results">
+<div class="result"><small>命中数</small><strong id="rHits">—</strong></div>
+<div class="result"><small>平均反应时间</small><strong id="rReaction">—</strong></div>
+<div class="result"><small>追踪命中占比</small><strong id="rTrack">—</strong></div>
+<div class="result"><small>目标接触次数</small><strong id="rTouches">—</strong></div>
+</div>
+<div class="report" id="report">完成一次测试后，这里会生成训练表现报告。</div>
+<div class="section"><h2>最近成绩</h2><table class="history"><thead><tr><th>时间</th><th>项目</th><th>命中</th><th>平均反应</th><th>命中率/追踪</th></tr></thead><tbody id="historyBody"><tr><td colspan="5" style="color:#8293b4">尚无记录</td></tr></tbody></table></div>
+</section>
+</div>
+<footer>说明：这是通用鼠标控制与瞄准训练工具，不会读取或修改游戏文件，也不会自动更改任何游戏设置。结果用于观察训练表现，不代表唯一或绝对最佳的游戏灵敏度。</footer>
+</main>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const arena = $('arena'), canvas = $('game'), ctx = canvas.getContext('2d');
+const state = {running:false, mode:'flick', duration:45, start:0, end:0, lastFrame:0, hits:0, attempts:0, touches:0, reactionTimes:[], target:null, pointer:{x:-100,y:-100,inside:false}, trackingMs:0, targetBorn:0, raf:0, lastSpawn:0, finished:false};
+const modeNames = {flick:'反应点靶',tracking:'追踪稳定',precision:'精细控制'};
+let dpr = 1, width = 800, height = 500;
+function resize(){
+ const r=arena.getBoundingClientRect(); dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+ width=Math.max(1,r.width); height=Math.max(1,r.height);
+ canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
+ canvas.style.width=width+'px'; canvas.style.height=height+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0); draw();
+}
+function targetRadius(){const v=$('size').value;return v==='small'?10:v==='large'?25:17}
+function newTarget(now=performance.now()){
+ const r=targetRadius(); const pad=r+8;
+ state.target={x:pad+Math.random()*Math.max(1,width-pad*2),y:pad+Math.random()*Math.max(1,height-pad*2),r,born:now,vx:(Math.random()-.5)*150,vy:(Math.random()-.5)*130};
+ state.targetBorn=now; state.lastSpawn=now;
+}
+function spawnAway(now){
+ const old=state.target; newTarget(now);
+ if(old && width>old.r*2 && height>old.r*2){
+  for(let i=0;i<6;i++){const t=state.target;if(Math.hypot(t.x-state.pointer.x,t.y-state.pointer.y)>Math.min(width,height)*.25)break;newTarget(now)}
+ }
+}
+function crosshair(x,y){
+ const color=$('crossColor').value, size=Math.max(6,Math.min(36,Number($('crossSize').value)||18)), gap=Math.max(0,Math.min(12,Number($('crossGap').value)||0));
+ ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineCap='round';ctx.shadowColor='#000';ctx.shadowBlur=3;
+ ctx.beginPath();ctx.moveTo(x-size/2,y);ctx.lineTo(x-gap,y);ctx.moveTo(x+gap,y);ctx.lineTo(x+size/2,y);ctx.moveTo(x,y-size/2);ctx.lineTo(x,y-gap);ctx.moveTo(x,y+gap);ctx.lineTo(x,y+size/2);ctx.stroke();
+ ctx.beginPath();ctx.arc(x,y,1.4,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.restore();
+}
+function draw(){
+ if(!ctx)return;
+ ctx.clearRect(0,0,width,height);
+ if(state.target){
+  const t=state.target;
+  ctx.save();
+  const g=ctx.createRadialGradient(t.x,t.y,1,t.x,t.y,t.r*1.7);g.addColorStop(0,'#ff8293');g.addColorStop(1,'#ff4f70');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ffd8df';ctx.lineWidth=2;ctx.beginPath();ctx.arc(t.x,t.y,t.r*.62,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+ if(state.pointer.inside)crosshair(state.pointer.x,state.pointer.y);
+}
+function pointFromEvent(e){const r=arena.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function setPointer(e){const p=pointFromEvent(e);state.pointer.x=p.x;state.pointer.y=p.y;state.pointer.inside=true}
+function onMove(e){
+ setPointer(e);
+ if(state.running && state.target){
+  const t=state.target, dist=Math.hypot(state.pointer.x-t.x,state.pointer.y-t.y);
+  if(dist<=t.r+3){
+   const now=performance.now();state.touches++;
+   if(state.mode!=='tracking'){
+    state.hits++;state.attempts++;state.reactionTimes.push(Math.max(0,now-state.targetBorn));
+    spawnAway(now);updateStats();
+   }
+  }
+ }
+ draw();
+}
+arena.addEventListener('pointermove',onMove);
+arena.addEventListener('pointerenter',e=>{setPointer(e);draw()});
+arena.addEventListener('pointerleave',()=>{state.pointer.inside=false;draw()});
+function updateStats(){
+ $('hits').textContent=state.hits;
+ $('accuracy').textContent=state.attempts?Math.round(state.hits/state.attempts*100)+'%':'—';
+}
+function setOverlay(title,text,button,show=true){
+ $('overlayTitle').textContent=title;$('overlayText').textContent=text;$('overlayBtn').textContent=button;
+ $('overlay').classList.toggle('hidden',!show);
+}
+function start(){
+ if(state.running)return;
+ cancelAnimationFrame(state.raf);
+ state.mode=$('mode').value;state.duration=Number($('duration').value)||45;
+ state.running=true;state.finished=false;state.hits=0;state.attempts=0;state.touches=0;state.reactionTimes=[];state.trackingMs=0;
+ state.start=performance.now();state.end=state.start+state.duration*1000;state.lastFrame=state.start;
+ state.pointer.inside=false;newTarget(state.start);updateStats();
+ $('time').textContent=state.duration.toFixed(1);
+ $('rHits').textContent='—';$('rReaction').textContent='—';$('rTrack').textContent='—';$('rTouches').textContent='—';$('report').textContent='测试进行中……移动鼠标碰到目标即可触发。';
+ setOverlay('测试进行中','将准星移动到目标上。倒计时结束后会自动生成报告。','测试中',false);
+ arena.focus({preventScroll:true});state.raf=requestAnimationFrame(loop);
+}
+function loop(now){
+ if(!state.running)return;
+ const remaining=Math.max(0,(state.end-now)/1000);
+ $('time').textContent=remaining.toFixed(1);
+ const dt=Math.min(0.05,Math.max(0,(now-state.lastFrame)/1000));state.lastFrame=now;
+ if(state.mode==='tracking' && state.target){
+  const t=state.target;
+  t.x+=t.vx*dt;t.y+=t.vy*dt;
+  if(t.x<t.r||t.x>width-t.r)t.vx*=-1;
+  if(t.y<t.r||t.y>height-t.r)t.vy*=-1;
+  t.x=Math.max(t.r,Math.min(width-t.r,t.x));t.y=Math.max(t.r,Math.min(height-t.r,t.y));
+  if(state.pointer.inside && Math.hypot(state.pointer.x-t.x,state.pointer.y-t.y)<=t.r)state.trackingMs+=dt*1000;
+  if(now-state.lastSpawn>1600){state.target.r=targetRadius();state.lastSpawn=now}
+ }
+ if(state.mode==='tracking' && state.pointer.inside && state.target && Math.hypot(state.pointer.x-state.target.x,state.pointer.y-state.target.y)<=state.target.r){
+  // Count a contact only on entry, not every animation frame.
+  if(!state.wasTrackingInside)state.touches++;
+  state.wasTrackingInside=true;
+ }else state.wasTrackingInside=false;
+ draw();
+ if(remaining<=0){finish();return}
+ state.raf=requestAnimationFrame(loop);
+}
+function finish(){
+ state.running=false;state.finished=true;cancelAnimationFrame(state.raf);
+ $('time').textContent='0.0';
+ const avg=state.reactionTimes.length?state.reactionTimes.reduce((a,b)=>a+b,0)/state.reactionTimes.length:null;
+ const trackPct=state.mode==='tracking'?Math.round(state.trackingMs/(state.duration*1000)*100):null;
+ $('rHits').textContent=state.hits;
+ $('rReaction').textContent=avg===null?'—':(avg/1000).toFixed(2)+' 秒';
+ $('rTrack').textContent=trackPct===null?'—':trackPct+'%';
+ $('rTouches').textContent=state.touches;
+ let report='';
+ if(state.mode==='tracking'){
+  report=`追踪占比 ${trackPct}%：${trackPct>=55?'本轮准星与目标保持得比较稳定。':trackPct>=30?'可以练习平滑跟随，尽量减少急促修正。':'建议先降低移动幅度，练习连续跟随目标。'} 这是单次训练数据，建议多测几轮观察趋势。`;
+ }else{
+  const a=state.hits;
+  report=`本轮完成 ${a} 次命中，平均命中反应时间 ${avg===null?'暂无数据':(avg/1000).toFixed(2)+' 秒'}。${avg!==null&&avg<0.45?'反应节奏较快，注意不要为了速度牺牲控制。': '可以重点练习提前规划移动路线与稳定停准。'} 若要比较表现，请保持同一测试时长与目标大小。`;
+ }
+ $('report').textContent=report;
+ const row={date:new Date().toLocaleString(),mode:modeNames[state.mode],hits:state.hits,avg:avg===null?null:avg/1000,score:state.mode==='tracking'?trackPct:(state.attempts?Math.round(state.hits/state.attempts*100):0)};
+ saveHistory(row);renderHistory();
+ setOverlay('测试完成',report,'再测一次',true);
+}
+function reset(){
+ state.running=false;state.finished=false;cancelAnimationFrame(state.raf);state.target=null;state.hits=0;state.attempts=0;state.touches=0;state.reactionTimes=[];state.trackingMs=0;state.wasTrackingInside=false;
+ $('time').textContent=(Number($('duration').value)||45).toFixed(1);$('hits').textContent='0';$('accuracy').textContent='—';
+ ['rHits','rReaction','rTrack','rTouches'].forEach(id=>$(id).textContent='—');
+ $('report').textContent='完成一次测试后，这里会生成训练表现报告。';
+ setOverlay('准备好了吗？','选择测试项目后点击“开始测试”。移动鼠标碰到目标即可命中，不需要点击。','开始训练',true);draw();
+}
+function saveHistory(row){
+ let arr=[];try{arr=JSON.parse(localStorage.getItem('mouseTrainerHistory')||'[]')}catch{}
+ arr.unshift(row);arr=arr.slice(0,8);
+ try{localStorage.setItem('mouseTrainerHistory',JSON.stringify(arr))}catch{}
+}
+function renderHistory(){
+ let arr=[];try{arr=JSON.parse(localStorage.getItem('mouseTrainerHistory')||'[]')}catch{}
+ const body=$('historyBody');body.innerHTML='';
+ if(!arr.length){body.innerHTML='<tr><td colspan="5" style="color:#8293b4">尚无记录</td></tr>';return}
+ arr.forEach(r=>{const tr=document.createElement('tr');[r.date,r.mode,r.hits,(r.avg===null||r.avg===undefined)?'—':r.avg.toFixed(2)+' 秒',(r.score===undefined)?'—':r.score+'%'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});body.appendChild(tr)})
+}
+$('startBtn').addEventListener('click',start);$('overlayBtn').addEventListener('click',()=>{if(state.running)return;start()});$('resetBtn').addEventListener('click',reset);
+['crossColor','crossSize','crossGap'].forEach(id=>$(id).addEventListener('input',draw));
+$('duration').addEventListener('change',()=>{if(!state.running)$('time').textContent=(Number($('duration').value)||45).toFixed(1)});
+window.addEventListener('resize',resize);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.running)finish()});
+resize();renderHistory();
+})();
+</script>
+</body>
+</html>
